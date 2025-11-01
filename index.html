@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial=1.0">
+    <title>Ç-A-Y Oyunu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=VT323&family=Space+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* css değişkenleri (temalar) */
+        :root{--bg:#f8f8f8;--text:#111;--score:#fff;--border:#ddd;--blue:#007bff;--green:#4caf50;--btn:#eee;--red:#dc3545; --text-rgb: 17, 17, 17; --blue-rgb: 0, 123, 255;}
+        .dark{--bg:#000;--text:#fff;--score:rgba(255,255,255,.1);--border:#333;--blue:#0099ff;--red:#ff4444; --text-rgb: 255, 255, 255; --blue-rgb: 0, 153, 255;}
+        .retro{--bg:#020b02;--text:#39ff14;--score:rgba(57, 255, 20, 0.1);--border:#1a7a0f;--blue:#39ff14;--red:#ff0000; --text-rgb: 57, 255, 20; --blue-rgb: 57, 255, 20;}
+        
+        /* LÜKS TEMA (Mor & Altın) */
+        .luxury{
+            --bg:#1a1a2e; --text:#ffcd00; --score:#2c004c; --border:#ffcd00; --blue:#8a2be2; --btn:#4a007c; --red:#ff416c; --blue-rgb: 138, 43, 226;
+        }
+        .luxury h1, .luxury h2, .luxury .kupa-mesaji {text-shadow: 0 0 5px var(--text), 0 0 15px var(--text);}
+        .luxury .scores, .luxury .pot, .luxury #history {box-shadow: 0 0 10px var(--text) inset; border: 2px solid var(--border);}
+        .luxury .buttons button {background: var(--btn); color: var(--text); border: 1px solid var(--border); box-shadow: 0 0 8px var(--border) !important;}
+        .luxury .buttons button:hover {background: rgba(138, 43, 226, 0.5);}
+        .luxury .buttons button.cooldown {background-color: #7c5cb0 !important; box-shadow: 0 0 8px var(--text) !important;}
+
+        /* Genel Stiller - SADELEŞTİRİLDİ */
+        .retro h1,.retro h2{text-shadow:0 0 5px var(--text), 0 0 10px var(--text)}
+        .retro .scores,.retro .pot,.retro #history{border:2px solid var(--border);box-shadow:0 0 8px var(--text) inset}
+        .retro .buttons button{font-family:'VT323', monospace; background:var(--bg); color:var(--text); border:1px solid var(--border); box-shadow:0 0 5px var(--text) !important}
+        
+        body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;margin:0;padding:10px;min-height:10vh;}
+        
+        h1, h2, .buttons button, .modal-content h2 {font-family: 'Orbitron', sans-serif !important;}
+        .retro .scores, .retro .pot {font-family: 'VT323', monospace !important;}
+        
+        #gamescreen{display:flex;align-items:center;flex-direction:column;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;max-width:350px;}
+        
+        .scores,.pot{margin:4px 0; padding:8px;border-radius:10px;background:var(--score);border:1px solid var(--border);width:300px;text-align:center;box-sizing:border-box;}
+        #pot {display: flex; flex-direction: column; align-items: center; font-size: 20px; padding: 5px 8px;}
+        .coin-row {white-space: nowrap;}
+        
+        .scores{display:flex;justify-content:space-around;padding:15px 8px}
+        .player-score{position: relative; padding-top: 25px; text-align:center;font-size:18px;font-weight:700;} 
+        .player-emoji{font-size:30px;margin-bottom:5px;display:block}
+        .player-action-emoji {position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 20px; opacity: 0; transition: opacity 0.3s, transform 0.3s; pointer-events: none;}
+        .player-action-emoji.active {opacity: 1; transform: translateX(-50%) translateY(5px);}
+
+        /* POT ANİMASYONLARI SADELEŞTİRİLDİ */
+        .pot-flash-green {background-color: var(--green) !important; color: white !important; box-shadow: 0 0 10px 5px var(--green); transform: scale(1.05); transition: all 0.1s;}
+        .pot-flash-red {background-color: var(--red) !important; color: white !important; box-shadow: 0 0 10px 5px var(--red); transform: scale(1.05); transition: all 0.1s;}
+        @keyframes pot-accumulate-flash {0%, 100% { background-color: var(--score); } 50% { background-color: var(--text); color: var(--bg);}}
+        .pot-flash-accumulate {animation: pot-accumulate-flash 1.2s ease-in-out;}
+
+        .buttons{display:flex;justify-content:center}
+        /* BUTON EMOJİLERİ KALDIRILDIĞI İÇİN FONT BOYUTU ARTTIRILDI */
+        .buttons button{font-size:28px; font-weight:600; margin:5px; padding:10px 16px; border-radius:10px; border:1px solid #aaa; background:var(--btn); cursor:pointer; position: relative; overflow: hidden; transition: transform 0.1s;}
+        .buttons button:active { transform: scale(0.9); background-color: var(--blue); color: white;}
+        
+        @keyframes cooldown-pulse {0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); }}
+        .buttons button.cooldown {background-color: #ccc !important; color: var(--text) !important; pointer-events: none; animation: cooldown-pulse 0.5s 1 forwards; box-shadow: 0 0 5px rgba(var(--text-rgb), 0.3) !important; transform: scale(1) !important;}
+        .dark .buttons button.cooldown {background-color: #333 !important;}
+        
+        #history{width:300px;height:180px; overflow-y:auto;border:2px solid var(--border); border-radius:10px; padding:10px;font-size:24px; line-height: 1.2;text-align:center; background:var(--score);margin-top:20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);}
+        #history div {padding: 2px 0; border-bottom: 1px dashed var(--border); font-family: 'Space Mono', monospace;}
+        #history div:last-child {border-bottom: none;}
+        
+        .top-right-btns{position:fixed;top:5px;right:5px;left:5px;display:flex;justify-content:flex-end;align-items:center;width:auto;z-index:10}
+        #settingsbtn, #shopbtn {font-size:24px;background:none;border:none;cursor:pointer;padding: 5px 8px;}
+        #sugar-display {font-family: 'Orbitron', sans-serif;font-size: 20px;font-weight: 600;margin-right: 15px;padding: 5px 10px;background: var(--score);border-radius: 8px;border: 1px solid var(--border);color: var(--text);}
+        
+        /* Modallar SADELEŞTİRİLDİ */
+        .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);display:none;justify-content:center;align-items:center;z-index:20}
+        .modal-content{position:relative;background:var(--score);color:var(--text);padding:20px;border-radius:10px;text-align:center;max-width:85%;width:350px;}
+        .modal-close-btn{position:absolute;top:10px;right:10px;font-size:20px;font-weight:700;color:var(--red);background:none;border:none;cursor:pointer;padding:0;line-height:1}
+        .modal-action-btn{margin-top:15px;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:5px;display:block;width:80%;margin:10px auto;}
+        .tema-btn-group {display: flex; flex-wrap: wrap; justify-content: space-between;}
+        .tema-btn-group button {width: 32%; margin: 5px 0.5%; padding: 10px; font-weight: bold; border: 2px solid var(--blue); background: none; color: var(--text); border-radius: 8px; cursor: pointer;}
+        .tema-btn-group button.active {background: var(--blue); color: white;}
+        
+        /* Deste Seçimi ve Dükkan Stilleri SADELEŞTİRİLDİ */
+        .card-option {padding: 10px 15px; font-size: 20px; font-weight: bold; border: 2px solid var(--border); background: var(--btn); color: var(--text); border-radius: 8px; cursor: pointer; transition: 0.1s;}
+        .card-option:hover {background: rgba(var(--blue-rgb), 0.2);}
+        .card-option.selected-card {background: var(--blue); color: white; border-color: var(--blue); box-shadow: 0 0 5px var(--blue);}
+        .card-option:disabled {opacity: 0.5; cursor: not-allowed;}
+
+        .shop-item {display: flex; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: rgba(var(--text-rgb), 0.05); margin-bottom: 15px;}
+        .shop-item-info {flex-grow: 1; text-align: left; padding-right: 10px;}
+        .shop-item-name {font-weight: bold; font-size: 18px;}
+        .shop-item-cost {font-size: 14px; color: var(--blue); font-family: 'Space Mono', monospace;}
+        .shop-buy-btn {padding: 8px 15px; background: var(--green); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; flex-shrink: 0;}
+        .shop-buy-btn:disabled {background: var(--red); cursor: not-allowed;}
+        .shop-item.purchased .shop-buy-btn {background: var(--blue) !important;}
+
+    </style>
+</head>
+<body>
+
+<div class="top-right-btns">
+    <div id="sugar-display">0 🍬</div>
+    <button id="shopbtn" onclick="togglemodal('shopmodal', true)">🛍️</button>
+    <button id="settingsbtn" onclick="togglemodal('settingsmodal', true)">⚙️</button>
+</div>
+
+<div id="gamescreen">
+    <div class="scores" id="scores"></div>
+    <div class="pot" id="pot">🪙🪙🪙🪙🪙🪙</div>
+    <div class="buttons" id="actionbuttons">
+        </div>
+
+    <p id="gameover"></p>
+    <button id="newgamebtn" style="display:none;" onclick="startgame(25)" data-key="new_game_btn">Yeni Oyun</button>
+    
+    <div id="history"></div>
+</div>
+
+<div id="settingsmodal" class="modal">
+    <div id="settingsmodalcontent" class="modal-content">
+        <button class="modal-close-btn" onclick="togglemodal('settingsmodal', false)">x</button>
+        <h2 data-key="settings_title">Ayarlar</h2>
+        
+        <h3 data-key="theme_selection_title">🎨 Tema Seçimi</h3>
+        <div id="temasecim" class="tema-btn-group">
+            <button id="beyaztemabtn" onclick="temasec('beyaz')" data-key="theme_white">⬜ Beyaz</button>
+            <button id="siyahtemabtn" onclick="temasec('siyah')" data-key="theme_dark">🌑 Siyah</button>
+            <button id="retrotemabtn" onclick="temasec('retro')" data-key="theme_retro">🖼️ Retro</button>
+            </div>
+        
+        </div>
+</div>
+
+<div id="shopmodal" class="modal">
+    <div id="shopmodalcontent" class="modal-content">
+        <button class="modal-close-btn" onclick="togglemodal('shopmodal', false)">x</button>
+        <h2 data-key="shop_title">🛍️ Dükkan</h2>
+        <div id="shop-items-container" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+            </div>
+    </div>
+</div>
+
+<div id="deckselectionmodal" class="modal">
+    <div class="modal-content">
+        <h2 data-key="deck_title">Deste Seçimi</h2>
+        <p data-key="deck_info">Lütfen oynamak istediğiniz 3 kartı seçin.</p>
+        <div id="available-cards" style="display:flex; justify-content:center; gap: 10px; margin: 15px 0;"></div>
+        <div id="selected-cards" style="font-size: 24px; margin-bottom: 15px;">Seçilenler: <span id="selected-cards-display"></span></div>
+        <button id="start-game-deck-btn" class="modal-action-btn" disabled onclick="finalizeDeckSelection()" data-key="deck_finalize">Oyuna Başla</button>
+    </div>
+</div>
+
+<div id="howtoplaymodal" class="modal" style="display: none;">
+    <div id="howtoplaycontent" class="modal-content" style="text-align: left;">
+        <h2 data-key="how_to_play_title">❓ Nasıl Oynanır</h2>
+        <p data-key="how_to_play_text">Oyunun Adı Ç-A-Y, yani ÇAL, AL, YAKALA. 3 kişiyle oynanır. Herkes Ç, A, ya da Y yazar. Orta her tur 6 puan (para) üretir. Oyuncular bu parayı almaya çalışır. A(L) diyen parayı alır. Ç(AL) diyen alandan çalar. Y(AKALA) diyen çalanı yakalar (ve para ona geçer). Bir tur kimse AL demezse para birikir. Sırayla Ç-A-Y yazan oyuncu 4 puan kazanır.</p>
+    </div>
+</div>
+
+<div id="creditsmodal" class="modal" style="display: none;">
+    <div id="creditscontent" class="modal-content">
+        <h2 data-key="credits_title">⭐ Künye</h2>
+        <p>NfShf Games</p>
+        <p data-key="credits_devs">ChatGPT & Gemini</p>
+    </div>
+</div>
+
+<script>
+    // --- ÇEVİRİ VERİTABANI (GÜNCELLENDİ) ---
+    const translations = {
+        tr: {
+            title: 'Ç-A-Y Oyunu', // Emoji kaldırıldı
+            new_game_btn: 'Yeni Oyun',
+            settings_title: 'Ayarlar',
+            theme_selection_title: '🎨 Tema Seçimi',
+            theme_white: '⬜ Beyaz',
+            theme_dark: '🌑 Siyah',
+            theme_retro: '🖼️ Retro',
+            theme_luxury: '✨ Lüks Tema', 
+            deck_title: 'Deste Seçimi', 
+            deck_info: 'Lütfen oynamak istediğiniz 3 kartı seçin.', 
+            deck_finalize: 'Oyuna Başla', 
+            shop_title: '🛍️ Dükkan', 
+            item_tema_luxury_name: 'Lüks Tema', 
+            item_button_d_name: 'D Tuşu',
+            item_button_v_name: 'V Tuşu',
+            buy_btn: (cost) => `${cost} 🍬 AL`,
+            purchased_btn: '✅ Alındı',
+            how_to_play_title: 'Nasıl Oynanır', // Emoji kaldırıldı
+            how_to_play_text: 'Oyunun Adı Ç-A-Y, yani ÇAL, AL, YAKALA. 3 kişiyle oynanır. Herkes Ç, A, ya da Y yazar. Orta her tur 6 puan (para) üretir. Oyuncular bu parayı almaya çalışır. A(L) diyen parayı alır. Ç(AL) diyen alandan çalar. Y(AKALA) diyen çalanı yakalar (ve para ona geçer). Bir tur kimse AL demezse para birikir. Sırayla Ç-A-Y yazan oyuncu 4 puan kazanır.',
+            credits_title: 'Künye', // Emoji kaldırıldı
+            credits_devs: 'ChatGPT & Gemini',
+            msg_accumulated: 'Birikti.',
+            msg_catchers_won: 'Yakalayanlar Kazandı.',
+            msg_stolen: 'Para Çalındı.',
+            msg_thieves_split: 'Çalanlar Bölüştü.',
+            msg_takers_split: 'Alıcılar Bölüştü.',
+            msg_bonus: '(+4 Bonus)!',
+            msg_d_conflict: 'D Çatışma (0 Puan).', 
+            msg_d_points: (points, streak) => `D (+${points}) Streak:${streak}`,
+            msg_d_points_ai: (points) => `D (+${points})`,
+            msg_v_stolen: (points) => `V ${points} puan çalındı`,
+            msg_game_over_winner: (winner) => `🏁 Oyun Bitti — Kazanan: ${winner}`,
+            msg_sugar_reward: 'Kazandın! (+3 🍬)', 
+        },
+    };
+
+    // --- MAĞAZA VERİSİ (V Tuşu Ücreti 15 Şeker Olarak Güncellendi) ---
+    const shopItems = [
+        {
+            id: 'tema_luxury',
+            type: 'theme',
+            nameKey: 'item_tema_luxury_name',
+            cost: 5,
+            themeId: 'luxury',
+            emoji: '✨'
+        },
+        {
+            id: 'button_d',
+            type: 'button',
+            nameKey: 'item_button_d_name',
+            cost: 10,
+            button: 'D',
+            emoji: '🫖'
+        },
+        {
+            id: 'button_v',
+            type: 'button',
+            nameKey: 'item_button_v_name',
+            // GÜNCELLENDİ: V tuşu ücreti 15
+            cost: 15, 
+            button: 'V',
+            emoji: '🧾'
+        }
+    ];
+
+    // --- OYUN DEĞİŞKENLERİ (EMOJİLER SADECE OYUN İÇİNDE KULLANILIYOR) ---
+    const adlar = ['sen', 'yz1', 'yz2']; 
+    const user_emoji = '🧑'; 
+    const dyn_emo = ['🤖', '👽', '☻️', '👶', '😺', '🥸'];
+    const move_emojis = {'Ç': '💰', 'A': '🫳', 'Y': '👨‍✈️', 'D': '🫖', 'V': '🧾'}; // Bu emojiler artık sadece oyuncu hareketlerini göstermek için kullanılıyor.
+
+    let currentLanguage = 'tr'; 
+    let p = [0, 0, 0]; 
+    let pot = 6; 
+    let aktiftema = 'beyaz'; 
+    let bitis = false; 
+    let hamleler = [[], [], []]; 
+    let cooldown = false; 
+    let d = {}; 
+    let max_skor = 25; 
+    let cemo = [user_emoji, '', '']; 
+    let sugarCubes = 0; 
+    let ownedItems = { 'tema_luxury': false, 'button_d': false, 'button_v': false }; 
+    let d_streak = 0; 
+    let current_deck = ['Ç', 'A', 'Y']; 
+    let last_moves_emojis = ['', '', '']; 
+    let selected_moves = []; 
+    let ai_deck = ['Ç', 'A', 'Y']; 
+
+    // --- BAŞLANGIÇ ---
+    window.onload = function() {
+        ['gamescreen', 'scores', 'pot', 'gameover', 'newgamebtn', 'settingsmodalcontent', 'temasecim', 'shopmodalcontent', 'shop-items-container', 'sugar-display', 'history', 'actionbuttons', 'deckselectionmodal'].forEach(id => d[id] = document.getElementById(id)); 
+        setupNewGameEmojis(); 
+        temasec('beyaz', true);
+        changeLanguage('tr', true);
+        d.gamescreen.style.display = 'flex'; 
+        startgame(max_skor); 
+    };
+    
+    // --- YARDIMCI FONKSİYONLAR ---
+    function T(key, ...args) {
+        const value = translations[currentLanguage][key];
+        return typeof value === 'function' ? value(...args) : value;
+    }
+    
+    function updateUIForLanguage() {
+        document.querySelectorAll('[data-key]').forEach(el => {
+            el.innerText = T(el.getAttribute('data-key'));
+        });
+        
+        // Modal başlıklarının data-key ile güncellenmesi
+        document.querySelector('#howtoplaymodal h2').innerText = T('how_to_play_title');
+        document.querySelector('#creditsmodal h2').innerText = T('credits_title');
+
+        renderThemes(); 
+        renderShop();
+        document.title = T('title');
+    }
+
+    // AI'ın atanan destesi içinden rasgele seçim yap
+    function rasgele() { 
+        return ai_deck[Math.floor(Math.random() * ai_deck.length)] 
+    }
+    
+    function setupNewGameEmojis() { 
+        const shuffled = dyn_emo.sort(() => .5 - Math.random()); 
+        cemo[1] = shuffled[0]; 
+        cemo[2] = shuffled[1];
+    }
+    
+    function changeLanguage(lang, initial = false) {
+        if (currentLanguage !== lang || initial) {
+            currentLanguage = lang;
+            updateUIForLanguage();
+            guncelle();
+        }
+    }
+    
+    function togglemodal(id, ac) { 
+        const modal = document.getElementById(id); 
+        modal.style.display = ac ? 'flex' : 'none'; 
+        if (ac) guncelle();
+        else {
+            restorePlayerActionEmojis();
+        }
+    }
+
+    function resetCurrentGameState() {
+        p = [0, 0, 0]; 
+        pot = 6; 
+        bitis = false; 
+        hamleler = [[], [], []]; 
+        cooldown = false; 
+        d_streak = 0; 
+        setupNewGameEmojis(); 
+        d.history.innerHTML = ""; 
+        d.gameover.innerText = ""; 
+        d.newgamebtn.style.display = "none"; 
+        d.actionbuttons.querySelectorAll('button').forEach(btn => { 
+            btn.disabled = false;
+            btn.classList.remove('cooldown'); 
+        }); 
+        clearPlayerActionEmojis(); 
+        last_moves_emojis = ['', '', '']; 
+    }
+    
+    // AI destesini seçen fonksiyon
+    function selectAIDeck() {
+        const availableMoves = getAvailableMoves();
+        if (availableMoves.length <= 3) {
+            ai_deck = availableMoves;
+            return;
+        }
+
+        // Mevcut kartlardan rastgele 3 tanesini seç
+        let shuffled = availableMoves.sort(() => 0.5 - Math.random());
+        ai_deck = shuffled.slice(0, 3);
+    }
+
+    function startgame(score_limit) {
+        max_skor = score_limit; 
+        resetCurrentGameState();
+        
+        // AI destesini oyun başında seç
+        selectAIDeck(); 
+        
+        const allButtonsOwned = ownedItems.button_d || ownedItems.button_v;
+        if (allButtonsOwned) {
+            renderDeckSelectionModal(); 
+        } else {
+            current_deck = ['Ç', 'A', 'Y'];
+            renderActionButtons();
+            guncelle();
+        }
+    }
+    
+    // --- DESTE SEÇİM MANTIĞI ---
+    
+    function getAvailableMoves() {
+        let moves = ['Ç', 'A', 'Y'];
+        if (ownedItems.button_d) moves.push('D');
+        if (ownedItems.button_v) moves.push('V');
+        return moves;
+    }
+    
+    function renderDeckSelectionModal() {
+        const availableMoves = getAvailableMoves();
+        const container = document.getElementById('available-cards');
+        const finalizeBtn = document.getElementById('start-game-deck-btn');
+        
+        selected_moves = current_deck.filter(move => availableMoves.includes(move)); 
+        if (selected_moves.length !== 3) selected_moves = availableMoves.slice(0, 3);
+        
+        // Deste seçim butonlarında sadece harf gösteriliyor
+        container.innerHTML = availableMoves.map(move => {
+            return `<button class="card-option" onclick="toggleCardSelection('${move}')">${move}</button>`;
+        }).join('');
+        
+        renderDeckSelectionModalUIOnly();
+        togglemodal('deckselectionmodal', true);
+    }
+    
+    function toggleCardSelection(move) {
+        const index = selected_moves.indexOf(move);
+        if (index > -1) {
+            selected_moves.splice(index, 1); 
+        } else if (selected_moves.length < 3) {
+            selected_moves.push(move); 
+        }
+        renderDeckSelectionModalUIOnly();
+    }
+    
+    function renderDeckSelectionModalUIOnly() {
+        const display = document.getElementById('selected-cards-display');
+        const finalizeBtn = document.getElementById('start-game-deck-btn');
+        const container = document.getElementById('available-cards');
+        
+        container.querySelectorAll('.card-option').forEach(btn => {
+            const move = btn.innerText; 
+            btn.classList.toggle('selected-card', selected_moves.includes(move));
+            if (selected_moves.length === 3 && !selected_moves.includes(move)) {
+                btn.disabled = true;
+            } else {
+                btn.disabled = false;
+            }
+        });
+        
+        const displayMoves = selected_moves.map(move => `${move}`); // Sadeleştirildi
+        display.innerHTML = displayMoves.join(', ');
+        finalizeBtn.disabled = selected_moves.length !== 3;
+    }
+    
+    function finalizeDeckSelection() {
+        if (selected_moves.length === 3) {
+            current_deck = selected_moves.slice();
+            togglemodal('deckselectionmodal', false);
+            renderActionButtons();
+            guncelle();
+        }
+    }
+
+    function renderActionButtons() {
+        if (bitis) {
+            d.actionbuttons.innerHTML = '';
+            return;
+        }
+        
+        // EMOJİLER BUTONLARDAN KALDIRILDI
+        let html = current_deck.map(move => 
+            `<button id="btn${move.toLowerCase()}" onclick="oyuncu('${move}')" data-text="${move}">${move}</button>`
+        ).join('');
+        
+        d.actionbuttons.innerHTML = html;
+        
+        if (cooldown) {
+            d.actionbuttons.querySelectorAll('button').forEach(btn => { 
+                btn.disabled = true;
+                btn.classList.add('cooldown'); 
+            });
+        }
+    }
+
+    // --- DÜKKAN MANTIĞI ---
+    function buyItem(itemId) {
+        const item = shopItems.find(i => i.id === itemId);
+        if (!item || ownedItems[itemId] || sugarCubes < item.cost) return;
+        
+        sugarCubes -= item.cost;
+        ownedItems[itemId] = true;
+        
+        if (item.type === 'theme') {
+            temasec(item.themeId);
+        }
+        
+        guncelle(); 
+    }
+
+    function renderShop() {
+        let html = '';
+        shopItems.forEach(item => {
+            const isOwned = ownedItems[item.id];
+            const canAfford = sugarCubes >= item.cost;
+            
+            let buttonText = isOwned ? T('purchased_btn') : T('buy_btn', item.cost);
+            let disabledAttr = isOwned || !canAfford ? 'disabled' : '';
+            let onClick = isOwned ? '' : `onclick="buyItem('${item.id}')"`;
+            let itemClass = isOwned ? 'shop-item purchased' : 'shop-item';
+            
+            // Dükkandaki ürün adlarında emoji tekrar eklendi (Örn: "D Tuşu" değil, "🫖 D Tuşu" gösterildi)
+            html += `
+                <div class="${itemClass}">
+                    <div class="shop-item-info">
+                        <div class="shop-item-name">${item.emoji} ${T(item.nameKey)}</div>
+                        <div class="shop-item-cost">${item.cost} 🍬</div> 
+                    </div>
+                    <button class="shop-buy-btn" ${disabledAttr} ${onClick}>${buttonText}</button>
+                </div>
+            `;
+        });
+        d['shop-items-container'].innerHTML = html;
+    }
+    
+    // --- TEMA MANTIĞI ---
+    function renderThemes() {
+        const baseThemes = [
+            { id: 'beyaz', key: 'theme_white' },
+            { id: 'siyah', key: 'theme_dark' },
+            { id: 'retro', key: 'theme_retro' }
+        ];
+        
+        let allThemes = baseThemes;
+        if (ownedItems.tema_luxury) {
+            allThemes.push({ id: 'luxury', key: 'theme_luxury' });
+        }
+        
+        let html = '';
+        allThemes.forEach(theme => {
+            const isActive = aktiftema === theme.id ? 'active' : '';
+            html += `<button id="${theme.id}temabtn" onclick="temasec('${theme.id}')" class="${isActive}" data-key="${theme.key}">${T(theme.key)}</button>`;
+        });
+        
+        d.temasecim.innerHTML = html;
+    }
+    
+    function temasec(tema, initial = false) {
+        aktiftema = tema;
+        document.body.classList.remove('dark', 'retro', 'luxury'); 
+        if (tema === 'siyah') document.body.classList.add('dark');
+        else if (tema === 'retro') document.body.classList.add('retro');
+        else if (tema === 'luxury') document.body.classList.add('luxury'); 
+
+        if (!initial) renderThemes();
+    }
+
+    // --- OYUN MANTIĞI ---
+
+    function oyuncu(h) {
+        if (bitis || cooldown) return; 
+        cooldown = true; 
+        
+        d.actionbuttons.querySelectorAll('button').forEach(btn => { 
+            btn.disabled = true;
+            btn.classList.add('cooldown'); 
+        });
+        
+        clearPlayerActionEmojis(); 
+
+        const mv = [h, rasgele(), rasgele()]; 
+        tursonucu(mv);
+        
+        setTimeout(() => { 
+            cooldown = false; 
+            d.actionbuttons.querySelectorAll('button').forEach(btn => { 
+                btn.classList.remove('cooldown'); 
+                btn.disabled = bitis; 
+            });
+        }, 3000); 
+    }
+
+    function tursonucu(mv) {
+        const onceki = pot; 
+        const a = mv.filter(x => x === 'A').length; 
+        const c = mv.filter(x => x === 'Ç').length; 
+        const y = mv.filter(x => x === 'Y').length;
+        let kazanc = [0, 0, 0]; 
+        let paylasildi = false; 
+        let aciklama = [];
+        
+        let animationClass = '';
+        let duration = 300; 
+        
+        // 1. Standart Ç-A-Y ve Pot Hesaplaması
+        if (a === 0 && c === 0 && y === 0) {
+            aciklama.push(T('msg_accumulated')); 
+            pot += 6;
+            animationClass = 'pot-flash-accumulate'; 
+            duration = 1200; 
+        }
+        else if (a === 0) { 
+            animationClass = 'pot-flash-accumulate'; 
+            duration = 1200; 
+            aciklama.push(T('msg_accumulated')); 
+            pot += 6;
+        }
+        else if (c > 0 && y > 0) { 
+            const pay = onceki / y; mv.forEach((m, i) => { if (m === 'Y') { kazanc[i] += pay; } }); 
+            paylasildi = true; aciklama.push(T('msg_catchers_won')); 
+        }
+        else if (c > 0) { 
+            const pay = onceki / c; mv.forEach((m, i) => { if (m === 'Ç') { kazanc[i] += pay; } }); 
+            paylasildi = true; aciklama.push(c === 1 ? T('msg_stolen') : T('msg_thieves_split')); 
+        }
+        else if (a > 0) { 
+            const pay = onceki / a; mv.forEach((m, i) => { if (m === 'A') { kazanc[i] += pay; } }); 
+            paylasildi = true; aciklama.push(T('msg_takers_split')); 
+        }
+
+        if (paylasildi) { 
+            pot = 6;
+            animationClass = kazanc[0] > 0 ? 'pot-flash-green' : 'pot-flash-red';
+        } 
+        
+        // 2. D Tuşu Hesaplaması (GÜNCELLENDİ)
+        const d_count = mv.filter(x => x === 'D').length;
+        const d_players = mv.map((m, i) => m === 'D' ? i : -1).filter(i => i !== -1);
+        
+        if (d_count >= 2) {
+            d_players.forEach(i => {
+                if (i === 0) d_streak = 0; 
+            });
+            aciklama.push(T('msg_d_conflict'));
+        } else if (d_count === 1) {
+            const d_player_idx = d_players[0];
+            let d_points = 0;
+
+            if (d_player_idx === 0) {
+                // GÜNCELLENDİ: D streak 1'den (3 puan) başlar
+                d_points = 2 + d_streak + 1; 
+                kazanc[0] += d_points;
+                d_streak++;
+                aciklama.push(T('msg_d_points', d_points, d_streak));
+                
+            } else {
+                d_points = 3; // AI için sabit 3 puan (D streak olayı sadece oyuncuya özel)
+                kazanc[d_player_idx] += d_points;
+                aciklama.push(T('msg_d_points_ai', d_points));
+            }
+        }
+        
+        if (mv[0] !== 'D') d_streak = 0;
+
+        // 3. V Tuşu Hesaplaması
+        const v_players = mv.map((m, i) => m === 'V' ? i : -1).filter(i => i !== -1);
+        
+        if (v_players.length > 0) {
+            let stolen_points = 0;
+            const potential_victims = kazanc.map((k, i) => k > 0 && v_players.indexOf(i) === -1 ? i : -1).filter(i => i !== -1);
+            
+            potential_victims.forEach(i => {
+                const steal_amount = Math.min(1, Math.floor(kazanc[i]));
+                if (steal_amount > 0) {
+                    kazanc[i] -= steal_amount; 
+                    stolen_points += steal_amount;
+                }
+            });
+            
+            const points_per_v = Math.floor(stolen_points / v_players.length);
+            v_players.forEach(i => {
+                kazanc[i] += points_per_v;
+            });
+            
+            aciklama.push(T('msg_v_stolen', points_per_v * v_players.length));
+        }
+
+        // Skorları Uygula
+        for (let i = 0; i < 3; i++) { 
+            p[i] += kazanc[i]; 
+        } 
+        
+        // Pot Animasyonu
+        if (animationClass) {
+            d.pot.classList.add(animationClass);
+            setTimeout(() => { d.pot.classList.remove(animationClass); }, duration);
+        }
+
+        // ÇAY Bonus Kontrolü
+        let bonusaciklama = ""; 
+        for (let i = 0; i < 3; i++) { 
+            hamleler[i].push(mv[i]); 
+            if (hamleler[i].slice(-3).join('') === 'ÇAY') { 
+                p[i] += 4;
+                bonusaciklama += ` ${cemo[i]} ${T('msg_bonus')}`;
+            }
+        }
+
+        const roundNumber = hamleler[0].length;
+        
+        // OYUN GEÇMİŞİNDE SADECE TUR NO VE HAMLELER GÖSTERİLİYOR
+        const s = `${roundNumber}. ${mv.join('')}`; 
+
+        d.history.innerHTML += `<div>${s}</div>`; 
+        d.history.scrollTop = d.history.scrollHeight; 
+        
+        guncelle(); 
+        kontrol();
+
+        // Hamle Emojilerini Göster (Burada kalmalı, çünkü aksiyonu temsil ediyor)
+        mv.forEach((move, i) => {
+            const move_emoji = move_emojis[move];
+            last_moves_emojis[i] = move_emoji; 
+            const playerActionEmojiSpan = document.getElementById(`player-action-emoji-${i}`);
+            if (playerActionEmojiSpan) {
+                playerActionEmojiSpan.innerText = move_emoji;
+                playerActionEmojiSpan.classList.add('active');
+            }
+        });
+    }
+    
+    function clearPlayerActionEmojis() {
+        document.querySelectorAll('.player-action-emoji').forEach(span => {
+            span.classList.remove('active');
+            span.innerText = '';
+        });
+    }
+
+    function restorePlayerActionEmojis() {
+        if (!last_moves_emojis[0]) return; 
+        
+        last_moves_emojis.forEach((emoji, i) => {
+            if (emoji) {
+                const playerActionEmojiSpan = document.getElementById(`player-action-emoji-${i}`);
+                if (playerActionEmojiSpan) {
+                    playerActionEmojiSpan.innerText = emoji;
+                    playerActionEmojiSpan.classList.add('active');
+                }
+            }
+        });
+    }
+
+    function kontrol() {
+        if (bitis) return; const mx = Math.max(...p);
+        
+        if (mx >= max_skor) {
+            bitis = true; 
+            d.actionbuttons.innerHTML = ''; 
+            
+            const kazananlar_ad = p.map((p, i) => Math.floor(p) >= max_skor ? adlar[i] : '').filter(n => n).join(', ');
+            d.gameover.innerText = T('msg_game_over_winner', kazananlar_ad);
+            
+            if (p[0] >= max_skor) { 
+                sugarCubes += 3;
+                d.gameover.innerText += `\n\n${T('msg_sugar_reward')}`;
+            }
+
+            d.newgamebtn.style.display = "inline-block"; 
+        }
+    }
+
+    // **************** GÜNCELLEME VE RENDER ******************
+    
+    function renderPotCoins(currentPot) {
+        if (currentPot <= 0) return '';
+        const coins_per_row = 6;
+        const total_rows = Math.ceil(currentPot / coins_per_row);
+        let html_content = '';
+        for (let i = 0; i < total_rows; i++) {
+            const coins_in_row = Math.min(coins_per_row, currentPot - (i * coins_per_row));
+            const coin_string = '🪙'.repeat(coins_in_row);
+            html_content += `<div class="coin-row">${coin_string}</div>`;
+        }
+        return html_content;
+    }
+    
+    function guncelle() {
+        d.scores.innerHTML = p.map((p, i) => 
+            `<div class="player-score">
+                <span class="player-action-emoji" id="player-action-emoji-${i}"></span>
+                <span class="player-emoji">${cemo[i]}</span>
+                ${Math.floor(p)}
+            </div>`
+        ).join('');
+        
+        d.pot.innerHTML = renderPotCoins(Math.floor(pot)); 
+        d['sugar-display'].innerText = `${sugarCubes} 🍬`; 
+        
+        renderThemes(); 
+        renderShop(); 
+        renderActionButtons(); 
+        temasec(aktiftema, true); 
+        restorePlayerActionEmojis(); 
+    }
+</script>
+</body>
+</html>
